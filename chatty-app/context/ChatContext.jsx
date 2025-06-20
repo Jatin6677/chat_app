@@ -6,13 +6,14 @@ export const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
   const { axios, socket, authUser } = useContext(AuthContext);
+
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [unseenMessages, setUnseenMessages] = useState({});
   const [mediaFiles, setMediaFiles] = useState([]);
 
-  // ✅ Fixed endpoint for getting users + unseen messages
+  // ✅ Get all users (updated endpoint)
   const getUsers = async () => {
     try {
       const { data } = await axios.get("/api/messages/users");
@@ -23,6 +24,7 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+  // ✅ Get messages for selected user
   const getMessages = async (receiverId) => {
     try {
       const { data } = await axios.get(`/api/messages/${receiverId}`);
@@ -33,28 +35,27 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
+  // ✅ Send a message
   const sendMessage = async (body) => {
     try {
       const { data } = await axios.post(`/api/messages/send/${selectedUser._id}`, body);
       setMessages((prev) => [...prev, data.newMessage]);
-
       if (data.newMessage.image) {
         setMediaFiles((prev) => [...prev, data.newMessage.image]);
       }
-
       socket?.emit("sendMessage", data.newMessage);
     } catch (error) {
       toast.error("Failed to send message");
     }
   };
 
+  // ✅ Extract images from messages
   const fetchMediaFromMessages = (messages) => {
-    const media = messages
-      .filter((msg) => msg.image)
-      .map((msg) => msg.image);
+    const media = messages.filter((msg) => msg.image).map((msg) => msg.image);
     setMediaFiles(media);
   };
 
+  // ✅ Listen for incoming messages
   useEffect(() => {
     socket?.on("newMessage", (msg) => {
       if (msg.senderId === selectedUser?._id) {
